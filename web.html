@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rule Visualizer</title>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.5.0/lib/p5.js"></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <h1>Rule Visualizer</h1>
+      <input type="text" v-model="inputRule" @input="start" />
+      <button @click="start">new initial state</button>
+      <button @click="newRule">new rule</button>
+      <div id="canvasParent"></div>
+    </div>
+
+    <script>
+      const { createApp } = Vue;
+
+      const app = createApp({
+        data() {
+          return {
+            inputRule: "",
+            size: 100,
+            radius: 3,
+            numStates: 2,
+            currentIndex: 0,
+            currentRow: [],
+          };
+        },
+        computed: {
+          rule() {
+            const rule = [];
+            for (let i = 0; i < this.inputRule.length; i++) {
+              rule.push(Number.parseInt(this.inputRule[i]));
+            }
+            return rule;
+          },
+          numCanvasRows() {
+            return Math.ceil(height / (width / app.size));
+          },
+        },
+        methods: {
+          start() {
+            this.currentIndex = 0;
+            this.currentRow = Array(this.size)
+              .fill(0)
+              .map(() => Math.floor(Math.random() * this.numStates));
+            loop();
+          },
+          update() {
+            const next = [];
+            for (let j = 0; j < this.size; j++) {
+              // get the neighborhood
+              const neighborhood = [];
+              for (let k = j - this.radius; k <= j + this.radius; k++) {
+                neighborhood.push(this.currentRow.at(k));
+              }
+              const neighborhoodIndex = parseInt(
+                neighborhood.join(""),
+                app.numStates
+              );
+              next.push(this.rule[neighborhoodIndex]);
+            }
+            this.currentRow = next;
+          },
+          newRule() {
+            this.inputRule = Array(this.numStates ** (2 * this.radius + 1))
+              .fill(0)
+              .map(() => Math.floor(Math.random() * this.numStates))
+              .join("");
+            this.start();
+          },
+        },
+      }).mount("#app");
+
+      function setup() {
+        let cnv = createCanvas(1000, 600);
+        cnv.parent("canvasParent");
+        background(247);
+
+        noStroke();
+        noLoop();
+      }
+
+      function draw() {
+        if (
+          app.numCanvasRows < app.currentIndex ||
+          app.rule.length !== app.numStates ** (2 * app.radius + 1)
+        ) {
+          noLoop();
+          return;
+        }
+        const rowsPerFrame = Math.max(1, Math.floor(2200 / app.size));
+        for (let j = 0; j < rowsPerFrame; j++) {
+          displayRow(app.currentRow, app.currentIndex++);
+          app.update();
+        }
+      }
+
+      function displayRow(row, y) {
+        // console.log(row);
+        const cellSize = width / app.size;
+        for (let i in row) {
+          // console.log(row[i], row, i);
+          const cellColor = ["#ffffff", "#000000", "#3e82ee"][row[i]];
+          fill(color(cellColor));
+          stroke(color(cellColor));
+          square(cellSize * i, cellSize * y, cellSize);
+        }
+      }
+
+      const isEnter = (keyEvent) => keyEvent.keyCode === 13;
+      const isInput = (keyEvent) => keyEvent.target.nodeName === "INPUT";
+
+      window.onkeydown = (event) => {
+        if (!isInput(event) && isEnter(event)) {
+          app.newRule();
+        }
+      };
+    </script>
+  </body>
+</html>
